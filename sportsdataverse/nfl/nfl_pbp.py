@@ -4569,29 +4569,29 @@ class NFLPlayProcess(object):
         )
 
         play_df["sack_epa"] = np.where(
-            play_df["non_fumble_sack"] == True, play_df["qbr_epa"], np.NaN
+            play_df["non_fumble_sack"] == True, play_df["qbr_epa"], np.nan
         )
         play_df["pass_epa"] = np.where(
-            play_df["pass"] == True, play_df["qbr_epa"], np.NaN
+            play_df["pass"] == True, play_df["qbr_epa"], np.nan
         )
         play_df["rush_epa"] = np.where(
-            play_df["rush"] == True, play_df["qbr_epa"], np.NaN
+            play_df["rush"] == True, play_df["qbr_epa"], np.nan
         )
         play_df["pen_epa"] = np.where(
-            play_df["penalty_flag"] == True, play_df["qbr_epa"], np.NaN
+            play_df["penalty_flag"] == True, play_df["qbr_epa"], np.nan
         )
 
         play_df["sack_weight"] = np.where(
-            play_df["non_fumble_sack"] == True, play_df["weight"], np.NaN
+            play_df["non_fumble_sack"] == True, play_df["weight"], np.nan
         )
         play_df["pass_weight"] = np.where(
-            play_df["pass"] == True, play_df["weight"], np.NaN
+            play_df["pass"] == True, play_df["weight"], np.nan
         )
         play_df["rush_weight"] = np.where(
-            play_df["rush"] == True, play_df["weight"], np.NaN
+            play_df["rush"] == True, play_df["weight"], np.nan
         )
         play_df["pen_weight"] = np.where(
-            play_df["penalty_flag"] == True, play_df["weight"], np.NaN
+            play_df["penalty_flag"] == True, play_df["weight"], np.nan
         )
 
         play_df["action_play"] = play_df.EPA != 0
