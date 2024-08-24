@@ -5477,8 +5477,8 @@ class CFBPlayProcess(object):
 
         self.plays_json.drive_start = self.plays_json.drive_start.astype(float)
         drives_data = self.plays_json[(self.plays_json.scrimmage_play == True)].groupby(by=["pos_team"], as_index=False, group_keys = False).agg(
-            drive_total_available_yards = ('drive_start', sum),
-            drive_total_gained_yards = ('drive.yards', sum),
+            drive_total_available_yards = ('drive_start', mean),
+            drive_total_gained_yards = ('drive.yards', mean),
             avg_field_position = ('drive_start', mean),
             plays_per_drive = ('drive.offensivePlays', mean),
             yards_per_drive = ('drive.yards', mean),

@@ -354,7 +354,8 @@ def test_available_yards():
     test = CFBPlayProcess(gameId = 401635525) # Ohio St/Mich: 401520434 vs BC/SMU: 401551750
     test.espn_cfb_pbp()
     json_dict_stuff = test.run_processing_pipeline()
+    box = test.create_box_score()
 
-    plays = test.plays_json
+    # plays = test.plays_json
 
-    LOGGER.info(plays["drive_start"].unique())
+    LOGGER.info(box)
