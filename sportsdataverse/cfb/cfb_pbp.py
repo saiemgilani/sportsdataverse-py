@@ -5000,11 +5000,14 @@ class CFBPlayProcess(object):
 
     def __add_drive_data(self, play_df):
         base_groups = play_df.groupby(["drive.id"], group_keys = False)
-        play_df["drive_start"] = np.where(
-            play_df["start.pos_team.id"] == play_df["homeTeamId"],
-            100 - play_df["drive.start.yardLine"],
-            play_df["drive.start.yardLine"],
-        )
+
+        play_df["drive_start"] = play_df.loc[base_groups['start.yardsToEndzone'].head(1).index, 'start.yardsToEndzone'] #base_groups['start.yardsToEndzone'].head(1)
+
+        # play_df["drive_start"] = np.where(
+        #     play_df["start.pos_team.id"] == play_df["homeTeamId"],
+        #     100 - play_df["drive_start"],
+        #     play_df["drive_start"],
+        # )
         play_df["drive_stopped"] = np.select([
             play_df['drive.result'].isna()
         ],

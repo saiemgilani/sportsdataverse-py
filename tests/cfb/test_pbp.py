@@ -349,3 +349,12 @@ def test_bad_wp_after_situations():
     LOGGER.info(bad_wpa_play[["id", "text", "lead_play_text", "change_of_poss", "change_of_pos_team", "wp_after_case", "wp_before", "wp_after", "proper_time_set", "game_play_number"] + search_cols].to_json(orient = "records", indent = 2))
 
     assert bad_wpa_play.proper_time_set.all()
+
+def test_available_yards():
+    test = CFBPlayProcess(gameId = 401635525) # Ohio St/Mich: 401520434 vs BC/SMU: 401551750
+    test.espn_cfb_pbp()
+    json_dict_stuff = test.run_processing_pipeline()
+
+    plays = test.plays_json
+
+    LOGGER.info(plays["drive_start"].unique())
