@@ -818,6 +818,7 @@ class CFBPlayProcess(object):
                 pbp_txt["plays"]["type.text"],
             )
         del pbp_txt["plays"]["clock.mm"]
+
         pbp_txt["plays"] = pbp_txt["plays"].replace({np.nan: None})
         return pbp_txt
 
@@ -1633,6 +1634,25 @@ class CFBPlayProcess(object):
             ),
             True,
             False,
+        )
+        # bugged games - 2024 WK1
+        play_df['statYardage'] = np.select(
+            [
+                (play_df["pass"] == True)
+                & (play_df.text.str.contains(" complete to ", case=False)) 
+                & (play_df['statYardage'] == 0)
+                & (play_df['start.team.id'] != play_df['end.team.id']),
+
+                (play_df["pass"] == True)
+                & (play_df.text.str.contains(" complete to ", case=False)) 
+                & (play_df['statYardage'] == 0)
+            ],
+            [
+                play_df['start.yardsToEndzone'] - (100 - play_df['end.yardsToEndzone']),
+
+                play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone']
+            ],
+            default = play_df['statYardage']
         )
         # --- Sacks----
         play_df["sack_vec"] = np.where(
@@ -2705,8 +2725,8 @@ class CFBPlayProcess(object):
                 & (play_df.text.str.contains(" complete to", case=False))#,
                 & (play_df.text.str.contains(" for .* y\w*ds?", regex = True, case = False)),
 
-                (play_df["pass"] == True)
-                & (play_df.text.str.contains(" complete to", case=False)) & (play_df.downs_turnover == True),
+                # (play_df["pass"] == True)
+                # & (play_df.text.str.contains(" complete to", case=False)) & (play_df.downs_turnover == True),
 
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains(" complete to", case=False)),
@@ -2734,9 +2754,9 @@ class CFBPlayProcess(object):
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
 
-                play_df['start.yardsToEndzone'] - (100 - play_df['end.yardsToEndzone']),
+                play_df['statYardage'], # play_df['start.yardsToEndzone'] - (100 - play_df['end.yardsToEndzone']),
 
-                play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone'],
+                # play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone'],
 
                 0.0,
 
@@ -2747,17 +2767,6 @@ class CFBPlayProcess(object):
                 .astype(float),
             ],
             default = None,
-        )
-        play_df['statYardage'] = np.select(
-            [
-                (play_df["pass"] == True)
-                & (play_df.text.str.contains(" complete to ", case=False)) 
-                & (play_df['statYardage'] == 0)
-            ],
-            [
-                play_df['yds_receiving']
-            ],
-            default = play_df['statYardage']
         )
 
         play_df["yds_int_return"] = None

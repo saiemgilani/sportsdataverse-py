@@ -446,3 +446,36 @@ def test_neb_24wk1():
     # ]
     # LOGGER.info(bad_yards_play[["id", "text", "yds_passing", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone", "yds_sacked"]].to_json(orient = "records", indent = 2))
     
+
+# def test_okst_24wk1():
+#     test = CFBPlayProcess(gameId = 401634212)
+#     test.espn_cfb_pbp()
+#     json_dict_stuff = test.run_processing_pipeline()
+
+#     plays = test.plays_json
+
+#     LOGGER.info(
+#         plays[
+#             (plays["drive.id"] == "4016342128")
+#         ]["text"].to_json(orient = "records", indent = 2)
+#     )
+#     bad_yards_play = plays[
+#         (plays['text'].str.contains('Bowman ')) & (plays['pass'] == True)
+#     ]
+#     # LOGGER.info(bad_yards_play[["start.down", "start.distance", "text", "yds_passing", "yds_receiving", "statYardage", "start.yardsToEndzone", "start.team.id", "end.yardsToEndzone", "end.team.id", "yds_sacked", "downs_turnover", "dropback"]].to_json(orient = "records", indent = 2))
+#     # LOGGER.info(f"Bowman dropbacks: {len(bad_yards_play[(bad_yards_play.dropback == True)])}")
+#     # LOGGER.info(f"Bowman Q1 dropbacks: {len(bad_yards_play[(bad_yards_play.period == 1)])}")
+#     # LOGGER.info(f"Bowman Q2 dropbacks: {len(bad_yards_play[(bad_yards_play.period == 2)])}")
+#     # LOGGER.info(f"Bowman Q3 dropbacks: {len(bad_yards_play[(bad_yards_play.period == 3)])}")
+#     # LOGGER.info(f"Bowman Q4 dropbacks: {len(bad_yards_play[(bad_yards_play.period == 4)])}")
+
+#     # LOGGER.info(f"Bowman non-dropbacks:")
+#     # LOGGER.info(bad_yards_play[(bad_yards_play.dropback == False)][["start.down", "start.distance", "text", "yds_passing", "yds_receiving", "statYardage", "start.yardsToEndzone", "start.team.id", "end.yardsToEndzone", "end.team.id", "yds_sacked", "downs_turnover", "dropback"]].to_json(orient = "records", indent = 2))
+
+
+#     drive_agg = bad_yards_play.sort_values(by="game_play_number").groupby(by = ['drive.id'], as_index=False, group_keys = False).agg(dropback = ('dropback', sum)).to_json(orient = "records", indent = 2)
+#     LOGGER.info(f"Bowman dropbacks by drive: {drive_agg}")
+
+#     box = test.create_box_score()
+#     LOGGER.info(box['pass'][0])
+#     assert box['pass'][0]['Yds'] == 267.0 # PBP seems to be missing a 6-yd completion? - 01-Sept-2024
