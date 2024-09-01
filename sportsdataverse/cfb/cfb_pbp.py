@@ -1636,16 +1636,20 @@ class CFBPlayProcess(object):
             False,
         )
         # bugged games - 2024 WK1
+        play_df['bugged_stat_yardage'] = (play_df["pass"] == True) & (play_df.text.str.contains(" complete to ", case=False)) & (play_df['statYardage'] == 0) & ((play_df['start.yardsToEndzone'] != play_df['end.yardsToEndzone']) | (play_df['start.yardsToEndzone'] != (100 - play_df['end.yardsToEndzone'])))
+        
         play_df['statYardage'] = np.select(
             [
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains(" complete to ", case=False)) 
                 & (play_df['statYardage'] == 0)
+                & (play_df['start.yardsToEndzone'] != play_df['end.yardsToEndzone'])
                 & (play_df['start.team.id'] != play_df['end.team.id']),
 
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains(" complete to ", case=False)) 
                 & (play_df['statYardage'] == 0)
+                & (play_df['start.yardsToEndzone'] != play_df['end.yardsToEndzone'])
             ],
             [
                 play_df['start.yardsToEndzone'] - (100 - play_df['end.yardsToEndzone']),
@@ -5161,6 +5165,7 @@ class CFBPlayProcess(object):
         rush_box = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.scrimmage_play == True)]
         # pass_box.yds_receiving.fillna(0.0, inplace=True)
         passer_box = pass_box[(pass_box["pass"] == True) & (pass_box["scrimmage_play"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False, group_keys = False).agg(
+            bugged_stat_yardage = ('bugged_stat_yardage', mean),
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
             Yds = ('yds_passing', sum),
