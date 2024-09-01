@@ -428,3 +428,21 @@ def test_bugged_pass_yards():
     ]
     LOGGER.info(edge_yards_play[["id", "text", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone"]].to_json(orient = "records", indent = 2))
     assert edge_yards_play.loc[edge_yards_play.index[0], 'yds_receiving'] == 2
+
+
+def test_neb_24wk1():
+    test = CFBPlayProcess(gameId = 401628454)
+    test.espn_cfb_pbp()
+    json_dict_stuff = test.run_processing_pipeline()
+
+    box = test.create_box_score()
+    LOGGER.info(box['pass'][0])
+    assert box['pass'][0]['Yds'] == (238.0 - 6.0)
+    # LOGGER.info(box['rush'][0])
+    
+    # plays = test.plays_json
+    # bad_yards_play = plays[
+    #     (plays['text'].str.contains(" pass complete ")) & (plays['text'].str.contains('Raiola '))
+    # ]
+    # LOGGER.info(bad_yards_play[["id", "text", "yds_passing", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone", "yds_sacked"]].to_json(orient = "records", indent = 2))
+    

@@ -2706,7 +2706,7 @@ class CFBPlayProcess(object):
                 & (play_df.text.str.contains(" for .* y\w*ds?", regex = True, case = False)),
 
                 (play_df["pass"] == True)
-                & (play_df.text.str.contains(" complete to", case=False)),
+                & (play_df.text.str.contains(" complete to", case=False)) & (play_df.downs_turnover == True),
 
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains(" complete to", case=False)),
@@ -2734,11 +2734,9 @@ class CFBPlayProcess(object):
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
 
-                play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone'],
+                play_df['start.yardsToEndzone'] - (100 - play_df['end.yardsToEndzone']),
 
-                play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0]
-                .str.extract(r"(\d+)")[0]
-                .astype(float),
+                play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone'],
 
                 0.0,
 
