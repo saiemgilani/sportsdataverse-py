@@ -2309,6 +2309,7 @@ class CFBPlayProcess(object):
             [True, True, True],
             default=False,
         )
+        play_df['dropback'] = (play_df["pass"] == True) | (play_df['sack_vec'] == True)
 
         play_df["target"] = np.select(
             [
@@ -2693,43 +2694,72 @@ class CFBPlayProcess(object):
         play_df["yds_receiving"] = np.select(
             [
                 (play_df["pass"] == True)
-                & (play_df.text.str.contains("complete to", case=False))
+                & (play_df.text.str.contains(" complete to", case=False))
                 & (play_df.text.str.contains(r"for no gain", case=False)),
+
                 (play_df["pass"] == True)
-                & (play_df.text.str.contains("complete to", case=False))
+                & (play_df.text.str.contains(" complete to", case=False))
                 & (play_df.text.str.contains("for a loss", case=False)),
+
                 (play_df["pass"] == True)
-                & (play_df.text.str.contains("complete to", case=False)),
+                & (play_df.text.str.contains(" complete to", case=False))#,
+                & (play_df.text.str.contains(" for .* y\w*ds?", regex = True, case = False)),
+
                 (play_df["pass"] == True)
-                & (play_df.text.str.contains("complete to", case=False)),
+                & (play_df.text.str.contains(" complete to", case=False)),
+
+                (play_df["pass"] == True)
+                & (play_df.text.str.contains(" complete to", case=False)),
+
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains("incomplete", case=False)),
+
                 (play_df["pass"] == True)
                 & (play_df["type.text"].str.contains("incompletion", case=False)),
+
                 (play_df["pass"] == True)
                 & (play_df.text.str.contains("Yd pass", case=False)),
             ],
             [
                 0.0,
+
                 -1
                 * play_df.text.str.extract(
                     r"((?<=for a loss of)[^,]+)", flags=re.IGNORECASE
                 )[0]
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
+
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0]
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
+
+                play_df['start.yardsToEndzone'] - play_df['end.yardsToEndzone'],
+
                 play_df.text.str.extract(r"((?<=for)[^,]+)", flags=re.IGNORECASE)[0]
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
+
                 0.0,
+
                 0.0,
+
                 play_df.text.str.extract(r"(\d+)\s+Yd\s+pass", flags=re.IGNORECASE)[0]
                 .str.extract(r"(\d+)")[0]
                 .astype(float),
             ],
-            default=None,
+            default = None,
+        )
+        play_df['statYardage'] = np.select(
+            [
+                (play_df["pass"] == True)
+                & (play_df.text.str.contains(" complete to ", case=False)) 
+                & (play_df['statYardage'] == 0)
+            ],
+            [
+                play_df['yds_receiving']
+            ],
+            default = play_df['statYardage']
         )
 
         play_df["yds_int_return"] = None
@@ -2951,6 +2981,15 @@ class CFBPlayProcess(object):
                 .astype(float)
             ],
             default=None,
+        )
+        play_df["yds_passing"] = np.select(
+            [
+                play_df.sack == True,
+            ],
+            [
+                play_df.yds_sacked
+            ],
+            default = play_df["yds_receiving"]
         )
 
         play_df["yds_penalty"] = np.select(
@@ -4108,14 +4147,15 @@ class CFBPlayProcess(object):
             [
                 (play_df["type.text"] != "Penalty")
                 & (play_df.sp == False)
-                & (play_df.statYardage < 0),
+                & (play_df.statYardage < 0) 
+                & (play_df["int"] == False), # INT can't be a TFL
                 (play_df["sack_vec"] == True),
             ],
             [True, True],
             default=False,
         )
         play_df["TFL_pass"] = np.where(
-            (play_df["TFL"] == True) & (play_df["pass"] == True), True, False
+            (play_df["TFL"] == True) & (play_df["pass"] == True) & (play_df["int"] == False), True, False
         )
         play_df["TFL_rush"] = np.where(
             (play_df["TFL"] == True) & (play_df["rush"] == True), True, False
@@ -5116,15 +5156,16 @@ class CFBPlayProcess(object):
         passer_box = pass_box[(pass_box["pass"] == True) & (pass_box["scrimmage_play"] == True)].fillna(0.0).groupby(by=["pos_team","passer_player_name"], as_index=False, group_keys = False).agg(
             Comp = ('completion', sum),
             Att = ('pass_attempt',sum),
-            Yds = ('yds_receiving',sum),
+            Yds = ('yds_passing', sum),
             Pass_TD = ('pass_td', sum),
             Int = ('int', sum),
-            YPA = ('yds_receiving', mean),
+            YPA = ('yds_passing', mean),
             EPA = ('EPA', sum),
             EPA_per_Play = ('EPA', mean),
             WPA = ('wpa', sum),
             SR = ('EPA_success', mean),
-            Sck = ('sack_vec', sum)
+            Sck = ('sack_vec', sum),
+            SckYds = ('yds_sacked', sum)
         ).round(2)
         passer_box = passer_box.replace({np.nan: None})
         qbs_list = passer_box.passer_player_name.to_list()

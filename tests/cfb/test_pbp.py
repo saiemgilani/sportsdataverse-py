@@ -31,14 +31,28 @@ def test_adv_box_score(box_score):
     assert box_score != None
     assert len(set(box_score.keys()).difference({"win_pct","pass","team","situational","receiver","rush","receiver","defensive","turnover","drives"})) == 0
 
-def test_havoc_rate(box_score):
+def test_havoc_rate(generated_data):
+    generated_data.run_processing_pipeline()
+    box_score = generated_data.create_box_score()
+
+
     defense_home = box_score["defensive"][0]
     # print(defense_home)
     pd = defense_home.get("pass_breakups", 0)
-    home_int = defense_home.get("Int", 0)
+    home_int = defense_home.get("def_int", 0)
     tfl = defense_home.get("TFL", 0)
     fum = defense_home.get("fumbles", 0)
     plays = defense_home.get("scrimmage_plays", 0)
+
+    # mask = (generated_data.plays_json.statYardage < 0) & (generated_data.plays_json.penalty_flag == False) & (generated_data.plays_json["start.team.id"] != 2567)
+    # LOGGER.info(generated_data.plays_json[mask][["id", "text", "statYardage", "havoc", "start.down", "start.yardsToEndzone", "end.down", "end.yardsToEndzone", "int", "forced_fumble"]].to_json(orient = "records", indent = 2))
+    LOGGER.info(generated_data.plays_json[(generated_data.plays_json.havoc == True) & (generated_data.plays_json.penalty_flag == False) & (generated_data.plays_json["start.team.id"] != 2567)][["id", "text", "statYardage", "havoc", "start.down", "start.yardsToEndzone", "end.down", "end.yardsToEndzone", "int", "forced_fumble", "TFL", "TFL_pass", "TFL_rush"]].to_json(orient = "records", indent = 2))
+    LOGGER.info({
+        "pd": pd,
+        "home_int": home_int,
+        "tfl": tfl,
+        "fum": fum
+    })
 
     assert plays > 0
     assert defense_home["havoc_total"] == (pd + home_int + tfl + fum)
@@ -359,3 +373,58 @@ def test_available_yards():
     # plays = test.plays_json
 
     LOGGER.info(box)
+
+
+def test_bugged_pass_yards():
+    test = CFBPlayProcess(gameId = 401628456)     # known bugged game - 2024 W1: Idaho vs Oregon
+    test.espn_cfb_pbp()
+    json_dict_stuff = test.run_processing_pipeline()
+    
+    plays = test.plays_json
+    bad_yards_play = plays[
+        ((plays['text'].str.contains(" pass complete ")) & (plays['start.team.id'] == 70)) # Idaho passing yards
+        |  ((plays['text'].str.contains(" sacked ")) & (plays['start.team.id'] == 70))
+    ]
+    LOGGER.info(bad_yards_play[["id", "text", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone", "yds_sacked"]].to_json(orient = "records", indent = 2))
+    
+    box = test.create_box_score()
+    LOGGER.info(box['pass'][0])
+    LOGGER.info(box['rush'][0])
+
+    assert box['pass'][0]['Yds'] == (168 - 25) # make sure a bugged game matches the right total
+    assert box['rush'][0]['Yds'] == 47 # rush totals should not have been changed
+
+    # make sure sack yardage is accounted for
+    assert list(filter(lambda x: x['passer_player_name'] == "Dillon Gabriel", box['pass']))[0]['Yds'] == (380 - 23) # make sure a bugged game matches the right total
+
+
+    # known good game - 2024 W1: GAST vs Georgia Tech
+    good = CFBPlayProcess(gameId = 401634302)     # known bugged game - 2024 W1: Idaho vs Oregon
+    good.espn_cfb_pbp()
+    good_json = good.run_processing_pipeline()
+    
+    good_plays = good.plays_json
+    good_yards_play = good_plays[
+        (good_plays['text'].str.contains(" pass complete ")) & (good_plays['start.team.id'] == 59) # GT passing yards
+    ]
+    LOGGER.info(good_yards_play[["id", "text", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone"]].to_json(orient = "records", indent = 2))
+
+    good_box = good.create_box_score()
+    LOGGER.info(good_box['pass'][1])
+    LOGGER.info(good_box['rush'][1])
+
+    assert good_box['pass'][1]['Yds'] == -1 # make sure a non-bugged game matches the right total
+    assert good_box['rush'][1]['Yds'] == 20 # rush totals should not have been changed
+
+    # edge case: completed pass, fumble, recovery
+    edge = CFBPlayProcess(gameId = 401634169)
+
+    edge.espn_cfb_pbp()
+    edge_json = edge.run_processing_pipeline()
+    
+    edge_plays = edge.plays_json
+    edge_yards_play = edge_plays[
+        (edge_plays['text'].str.contains("Hudson Card pass complete to Drew Biber for 2 yds fumbled, forced by Maddix Blackwell, recovered by INST Garret Ollendieck G. Ollendieck return for 0 yds"))
+    ]
+    LOGGER.info(edge_yards_play[["id", "text", "yds_receiving", "statYardage", "start.yardsToEndzone", "end.yardsToEndzone"]].to_json(orient = "records", indent = 2))
+    assert edge_yards_play.loc[edge_yards_play.index[0], 'yds_receiving'] == 2
