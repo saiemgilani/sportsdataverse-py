@@ -612,27 +612,33 @@ class CFBPlayProcess(object):
         pbp_txt["plays"]["start.awayTeamTimeouts"] = pbp_txt["plays"][
                 "start.awayTeamTimeouts"
             ].apply(lambda x: int(x))
+        pbp_txt["plays"]['game_complete'] = self.json["teamInfo"]["status"]["type"]["completed"]
         pbp_txt["plays"]["end.TimeSecsRem"] = pbp_txt["plays"][
                 "start.TimeSecsRem"
-            ].shift(-1)
+        ].shift(-1)
+
         pbp_txt["plays"]["end.TimeSecsRem"] = np.select(
             [
+                ~(pbp_txt["plays"]['game_complete']) & pbp_txt["plays"]["end.TimeSecsRem"].isna() == True,
                 pbp_txt["plays"]["end.TimeSecsRem"].isna() == True
             ],
             [
+                pbp_txt["plays"]["start.TimeSecsRem"],
                 0
             ],
             default = pbp_txt["plays"]["end.TimeSecsRem"]
         )
 
         pbp_txt["plays"]["end.adj_TimeSecsRem"] = pbp_txt["plays"][
-                "start.adj_TimeSecsRem"
-            ].shift(-1)
+            "start.adj_TimeSecsRem"
+        ].shift(-1)
         pbp_txt["plays"]["end.adj_TimeSecsRem"] = np.select(
             [
+                ~(pbp_txt["plays"]['game_complete']) & pbp_txt["plays"]["end.adj_TimeSecsRem"].isna() == True,
                 pbp_txt["plays"]["end.adj_TimeSecsRem"].isna() == True
             ],
             [
+                pbp_txt["plays"]["start.adj_TimeSecsRem"],
                 0
             ],
             default = pbp_txt["plays"]["end.adj_TimeSecsRem"]
@@ -4975,29 +4981,28 @@ class CFBPlayProcess(object):
         play_df["lead_wp_before2"] = play_df["wp_before"].shift(-2)
 
         play_df["wp_after"] = WP_end
-        game_complete = self.json["teamInfo"]["status"]["type"]["completed"]
         play_df["wp_after"] = np.select(
             [
                 (play_df["type.text"] == "Timeout"),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end > 0) & (play_df["start.pos_team.id"] == play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end < 0) & (play_df["start.pos_team.id"] == play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end > 0) & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
@@ -5044,25 +5049,25 @@ class CFBPlayProcess(object):
         play_df["wp_after_case"] = np.select(
             [
                 (play_df["type.text"] == "Timeout"),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end > 0) & (play_df["start.pos_team.id"] == play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end < 0) & (play_df["start.pos_team.id"] == play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))
                 )
                 & (play_df.pos_score_diff_end > 0) & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"]),
-                game_complete
+                play_df["game_complete"]
                 & (
                     (play_df.lead_play_type.isna())
                     | (play_df.game_play_number == max(play_df.game_play_number))

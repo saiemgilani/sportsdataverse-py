@@ -502,3 +502,20 @@ def test_lsu_24wk1():
     assert bad_yards_play.loc[bad_yards_play.index[0], 'end.yardsToEndzone'] == 75 
     assert bad_yards_play.loc[bad_yards_play.index[0], 'end.down'] == 1
     assert bad_yards_play.loc[bad_yards_play.index[0], 'end.distance'] == 10
+
+
+# def test_last_play_live_game():
+#     test = CFBPlayProcess(gameId = 401628334)
+#     test.espn_cfb_pbp()
+#     json_dict_stuff = test.run_processing_pipeline()
+
+#     plays = test.plays_json
+#     bad_yards_play = plays[
+#         plays['game_play_number'] == plays['game_play_number'].max()
+#     ]
+#     bad_yards_play.id = bad_yards_play.id.astype(str)
+#     LOGGER.info("BEFORE:")
+#     LOGGER.info(bad_yards_play[["text", "penalty_flag", "wp_before", "EP_start"] + wp_start_columns].to_json(orient = "records", indent = 2))
+#     LOGGER.info("AFTER:")
+#     LOGGER.info(bad_yards_play[["text", "penalty_flag", "wp_after_case", "wp_after", "wpa", "end.ExpScoreDiff_case", "EP_end", "EPA"] + wp_end_columns].to_json(orient = "records", indent = 2))
+
