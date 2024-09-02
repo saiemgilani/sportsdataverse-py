@@ -490,7 +490,7 @@ def test_lsu_24wk1():
     bad_yards_play = plays[
         plays['text'].isin([
             "LSU Penalty, Unsportsmanlike Conduct (Kyren Lacy) to the LSU 20",
-            # "Garrett Nussmeier pass complete to Kyren Lacy for 19 yds for a TD (Damian Ramos KICK)"
+            # "USC Penalty, Unsportsmanlike Conduct (Anthony Lucas) to the 50 yard line",
         ])
     ]
     bad_yards_play.id = bad_yards_play.id.astype(str)

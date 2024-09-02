@@ -4229,7 +4229,7 @@ class CFBPlayProcess(object):
         )
 
     def __process_epa(self, play_df):
-        kick_mask = (play_df["type.text"].isin(kickoff_vec))
+        kick_mask = (play_df["type.text"].isin(kickoff_vec)) | (play_df.penalty_assessed_on_kickoff == True)
 
         play_df.loc[kick_mask, "down"] = 1
         play_df.loc[kick_mask, "start.down"] = 1
@@ -4949,7 +4949,7 @@ class CFBPlayProcess(object):
         play_df["wp_before"] = WP_start
         play_df["wp_touchback"] = WP_start_touchback
         play_df["wp_before"] = np.where(
-            play_df["type.text"].isin(kickoff_vec),
+            play_df["type.text"].isin(kickoff_vec) | (play_df.penalty_assessed_on_kickoff == True),
             play_df["wp_touchback"],
             play_df["wp_before"],
         )
