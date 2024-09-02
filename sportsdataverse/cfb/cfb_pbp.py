@@ -1262,6 +1262,11 @@ class CFBPlayProcess(object):
         play_df["yds_penalty"] = play_df.yds_penalty.str.replace(
             "yards\\)|Yards\\)|yds\\)|Yds\\)", ""
         ).str.replace("\\(", "")
+
+        # edgecase 2024 WK 1: USC/LSU  - if the last play was a scoring play and the next play is a kickoff, this penalty should not change the result of that play.
+        # Process the kickoff properly
+        play_df['penalty_assessed_on_kickoff'] = (play_df.scoring_play.shift(1) == True) & (play_df['kickoff_play'].shift(-1) == True) & (play_df['end.pos_score_diff'] != play_df['start.pos_score_diff'])
+
         return play_df
 
     def __add_downs_data(self, play_df):
@@ -1814,7 +1819,10 @@ class CFBPlayProcess(object):
                 (play_df.kickoff_play == True)
                 | (play_df.lag_pos_team != play_df.pos_team),
             ],
-            [play_df.lag_pos_score_diff, -1 * play_df.lag_pos_score_diff],
+            [
+                play_df.lag_pos_score_diff, 
+                -1 * play_df.lag_pos_score_diff
+            ],
             default=play_df.lag_pos_score_diff,
         )
         # --- Timeouts ------
@@ -4221,23 +4229,28 @@ class CFBPlayProcess(object):
         )
 
     def __process_epa(self, play_df):
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down"] = 1
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "start.down"] = 1
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_1"] = True
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_2"] = False
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_3"] = False
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "down_4"] = False
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "distance"] = 10
-        play_df.loc[play_df["type.text"].isin(kickoff_vec), "start.distance"] = 10
+        kick_mask = (play_df["type.text"].isin(kickoff_vec))
+
+        play_df.loc[kick_mask, "down"] = 1
+        play_df.loc[kick_mask, "start.down"] = 1
+        play_df.loc[kick_mask, "down_1"] = True
+        play_df.loc[kick_mask, "down_2"] = False
+        play_df.loc[kick_mask, "down_3"] = False
+        play_df.loc[kick_mask, "down_4"] = False
+        play_df.loc[kick_mask, "distance"] = 10
+        play_df.loc[kick_mask, "start.distance"] = 10
+        
         play_df["start.yardsToEndzone.touchback"] = 99
         play_df.loc[
-            (play_df["type.text"].isin(kickoff_vec)) & (play_df["season"] > 2013),
+            (kick_mask) & (play_df["season"] > 2013),
             "start.yardsToEndzone.touchback",
         ] = 75
         play_df.loc[
-            (play_df["type.text"].isin(kickoff_vec)) & (play_df["season"] <= 2013),
+            (kick_mask) & (play_df["season"] <= 2013),
             "start.yardsToEndzone.touchback",
         ] = 80
+
+        play_df.loc[(play_df.penalty_assessed_on_kickoff == True), "start.yardsToEndzone"] = play_df["start.yardsToEndzone.touchback"]
 
         start_touchback_data = play_df[ep_start_touchback_columns]
         start_touchback_data.columns = ep_final_names
@@ -4276,13 +4289,15 @@ class CFBPlayProcess(object):
         play_df.loc[play_df["end.yardsToEndzone"] >= 100, "end.yardsToEndzone"] = 99
         play_df.loc[play_df["end.yardsToEndzone"] <= 0, "end.yardsToEndzone"] = 99
 
-        play_df.loc[play_df.kickoff_tb == True, "end.yardsToEndzone"] = 75
-        play_df.loc[play_df.kickoff_tb == True, "end.down"] = 1
-        play_df.loc[play_df.kickoff_tb == True, "end.distance"] = 10
+        play_df.loc[(play_df.kickoff_tb == True) | (play_df.penalty_assessed_on_kickoff == True), "end.yardsToEndzone"] = 75
+        play_df.loc[(play_df.kickoff_tb == True) | (play_df.penalty_assessed_on_kickoff == True), "end.down"] = 1
+        play_df.loc[(play_df.kickoff_tb == True) | (play_df.penalty_assessed_on_kickoff == True), "end.distance"] = 10
 
         play_df.loc[play_df.punt_tb == True, "end.down"] = 1
         play_df.loc[play_df.punt_tb == True, "end.distance"] = 10
         play_df.loc[play_df.punt_tb == True, "end.yardsToEndzone"] = 80
+
+        play_df.loc[(play_df.penalty_assessed_on_kickoff == True), 'end.pos_score_diff'] = play_df['start.pos_score_diff']
 
         end_data = play_df[ep_end_columns]
         end_data.columns = ep_final_names
@@ -4572,12 +4587,20 @@ class CFBPlayProcess(object):
             play_df["EP_start"],
         )
         play_df["EP_start"] = np.where(
-            (play_df["type.text"].isin(kickoff_vec)),
+            (play_df["type.text"].isin(kickoff_vec)) | (play_df.penalty_assessed_on_kickoff == True),
             play_df["EP_start_touchback"],
             play_df["EP_start"],
         )
-        play_df["EP_end"] = np.where(
-            (play_df["type.text"] == "Timeout"), play_df["EP_start"], play_df["EP_end"]
+        play_df["EP_end"] = np.select(
+            [
+                (play_df["type.text"] == "Timeout"), 
+                play_df.penalty_assessed_on_kickoff
+            ],
+            [
+                play_df["EP_start"], 
+                play_df["EP_start_touchback"], # EPA hit would be on the kickoff play for these guys
+            ],
+            default = play_df["EP_end"]
         )
         play_df["EPA"] = np.select(
             [
@@ -4835,6 +4858,7 @@ class CFBPlayProcess(object):
                 # Flips for Turnovers that are on kickoffs
                 (play_df["type.text"].isin(kickoff_turnovers))
                 & (play_df["scoringPlay"] == False),
+                (play_df.penalty_assessed_on_kickoff == True),
                 (play_df["scoringPlay"] == False) & (play_df["type.text"] != "Timeout"),
                 (play_df["scoringPlay"] == False) & (play_df["type.text"] == "Timeout"),
                 (play_df["scoringPlay"] == True)
@@ -4852,6 +4876,7 @@ class CFBPlayProcess(object):
             [
                 play_df["pos_score_diff_end"] - play_df.EP_end,
                 play_df["pos_score_diff_end"] + play_df.EP_end,
+                play_df["start.ExpScoreDiff"],
                 play_df["pos_score_diff_end"] + play_df.EP_end,
                 play_df["pos_score_diff_end"] + play_df.EP_end,
                 play_df["pos_score_diff_end"] + 0.92,
@@ -4860,9 +4885,56 @@ class CFBPlayProcess(object):
             ],
             default=play_df["pos_score_diff_end"],
         )
-        play_df["end.ExpScoreDiff_Time_Ratio"] = play_df["end.ExpScoreDiff"] / (
-            play_df["end.adj_TimeSecsRem"] + 1
+
+        play_df["end.ExpScoreDiff_case"] = np.select(
+            [
+                # Flips for Turnovers that aren't kickoffs
+                (
+                    (
+                        (play_df["type.text"].isin(end_change_vec))
+                        | (play_df.downs_turnover == True)
+                    )
+                    & (play_df.kickoff_play == False)
+                    & (play_df["scoringPlay"] == False)
+                ),
+                # Flips for Turnovers that are on kickoffs
+                (play_df["type.text"].isin(kickoff_turnovers))
+                & (play_df["scoringPlay"] == False),
+
+                (play_df.penalty_assessed_on_kickoff == True),
+                
+                (play_df["scoringPlay"] == False) & (play_df["type.text"] != "Timeout"),
+
+                (play_df["scoringPlay"] == False) & (play_df["type.text"] == "Timeout"),
+
+                (play_df["scoringPlay"] == True)
+                & (play_df["td_play"] == True)
+                & (play_df["type.text"].isin(defense_score_vec))
+                & (play_df.season <= 2013),
+
+                (play_df["scoringPlay"] == True)
+                & (play_df["td_play"] == True)
+                & (play_df["type.text"].isin(offense_score_vec))
+                & (play_df.season <= 2013),
+
+                (play_df["type.text"] == "Timeout")
+                & (play_df["lag_scoringPlay"] == True)
+                & (play_df.season <= 2013),
+            ],
+            [
+                1,# play_df["pos_score_diff_end"] - play_df.EP_end,
+                2,# play_df["pos_score_diff_end"] + play_df.EP_end,
+                3,# play_df["start.ExpScoreDiff_touchback"],
+                4,# play_df["pos_score_diff_end"] + play_df.EP_end,
+                5,# play_df["pos_score_diff_end"] + play_df.EP_end,
+                6,# play_df["pos_score_diff_end"] + 0.92,
+                7,# play_df["pos_score_diff_end"] + 0.92,
+                8,# play_df["pos_score_diff_end"] + 0.92,
+            ],
+            default=None,
         )
+
+        play_df["end.ExpScoreDiff_Time_Ratio"] = play_df["end.ExpScoreDiff"] / (play_df["end.adj_TimeSecsRem"] + 1)
         # ---- wp_before ----
         start_touchback_data = play_df[wp_start_touchback_columns]
         start_touchback_data.columns = wp_final_names
@@ -4948,6 +5020,7 @@ class CFBPlayProcess(object):
                 & ((play_df["change_of_pos_team"] == True) | (play_df["change_of_poss"] == True)),  # onside recovery
                 (play_df["penalty_flag"] == True & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"])),
                 (play_df["start.pos_team.id"] != play_df["end.pos_team.id"]),
+                ((play_df["penalty_flag"] == True) & (play_df.penalty_assessed_on_kickoff == True)),
             ],
             [
                 play_df.wp_before,
@@ -4963,6 +5036,7 @@ class CFBPlayProcess(object):
                 (1 - play_df.lead_wp_before),
                 play_df.wp_after,
                 (1 - play_df.wp_after),
+                WP_start_touchback
             ],
             default=play_df.wp_after,
         )
@@ -5011,6 +5085,7 @@ class CFBPlayProcess(object):
                 & ((play_df["change_of_pos_team"] == True) | (play_df["change_of_poss"] == True)),  # onside recovery
                 (play_df["penalty_flag"] == True & (play_df["start.pos_team.id"] != play_df["end.pos_team.id"])),
                 (play_df["start.pos_team.id"] != play_df["end.pos_team.id"]),
+                ((play_df["penalty_flag"] == True) & (play_df.penalty_assessed_on_kickoff == True)),
             ],
             [
                 0,
@@ -5025,7 +5100,8 @@ class CFBPlayProcess(object):
                 9,
                 10,
                 11,
-                12
+                12,
+                13
             ],
             default=None,
         )

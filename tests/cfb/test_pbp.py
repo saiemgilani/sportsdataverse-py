@@ -479,3 +479,26 @@ def test_neb_24wk1():
 #     box = test.create_box_score()
 #     LOGGER.info(box['pass'][0])
 #     assert box['pass'][0]['Yds'] == 267.0 # PBP seems to be missing a 6-yd completion? - 01-Sept-2024
+
+
+def test_lsu_24wk1():
+    test = CFBPlayProcess(gameId = 401628334)
+    test.espn_cfb_pbp()
+    json_dict_stuff = test.run_processing_pipeline()
+
+    plays = test.plays_json
+    bad_yards_play = plays[
+        plays['text'].isin([
+            "LSU Penalty, Unsportsmanlike Conduct (Kyren Lacy) to the LSU 20",
+            # "Garrett Nussmeier pass complete to Kyren Lacy for 19 yds for a TD (Damian Ramos KICK)"
+        ])
+    ]
+    bad_yards_play.id = bad_yards_play.id.astype(str)
+    LOGGER.info("BEFORE:")
+    LOGGER.info(bad_yards_play[["penalty_assessed_on_kickoff", "text", "penalty_flag", "wp_before", "EP_start"] + wp_start_columns].to_json(orient = "records", indent = 2))
+    LOGGER.info("AFTER:")
+    LOGGER.info(bad_yards_play[["penalty_assessed_on_kickoff", "text", "penalty_flag", "wp_after_case", "wp_after", "wpa", "end.ExpScoreDiff_case", "EP_end", "EPA"] + wp_end_columns].to_json(orient = "records", indent = 2))
+    assert bad_yards_play.loc[bad_yards_play.index[0], 'end.pos_score_diff'] == 0
+    assert bad_yards_play.loc[bad_yards_play.index[0], 'end.yardsToEndzone'] == 75 
+    assert bad_yards_play.loc[bad_yards_play.index[0], 'end.down'] == 1
+    assert bad_yards_play.loc[bad_yards_play.index[0], 'end.distance'] == 10
