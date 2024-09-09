@@ -5495,19 +5495,32 @@ class CFBPlayProcess(object):
         )
 
         situation_box_late = self.plays_json[(self.plays_json.late_down == True)].groupby(by=["pos_team"], as_index=False, group_keys = False).agg(
-            EPA_success_late_down = ('EPA_success_late_down', sum),
-            EPA_success_late_down_pass = ('EPA_success_late_down_pass', sum),
-            EPA_success_late_down_rush = ('EPA_success_late_down_rush', sum),
+            EPA_success_late_down = ('EPA_success', sum),
+            EPA_success_late_down_rate = ('EPA_success', mean),
             late_downs = ('late_down', sum),
-            late_down_pass = ('late_down_pass', sum),
-            late_down_rush = ('late_down_rush', sum),
+            late_down_pass_rate = ('pass', mean),
+            late_down_rush_rate = ('rush', mean),
             EPA_late_down = ('EPA', sum),
             EPA_late_down_per_play = ('EPA', mean),
-            EPA_success_late_down_rate = ('EPA_success_late_down', mean),
-            EPA_success_late_down_pass_rate = ('EPA_success_late_down_pass', mean),
-            EPA_success_late_down_rush_rate = ('EPA_success_late_down_rush', mean),
-            late_down_pass_rate = ('late_down_pass', mean),
-            late_down_rush_rate = ('late_down_rush', mean)
+            late_down_first_down = ('first_down_created', sum),
+            late_down_first_down_rate = ('first_down_created', mean),
+            late_down_avg_distance = ('start.distance', mean)
+        )
+
+        situation_box_late_pass = self.plays_json[(self.plays_json["pass"] == True) & (self.plays_json.late_down == True)].groupby(by=["pos_team"], as_index=False, group_keys = False).agg(
+            late_down_pass = ('pass', sum),
+            EPA_late_down_pass = ('EPA', sum),
+            EPA_late_down_pass_per_play = ('EPA', mean),
+            EPA_success_late_down_pass = ('EPA_success', sum),
+            EPA_success_late_down_pass_rate = ('EPA_success', mean),
+        )
+
+        situation_box_late_rush = self.plays_json[(self.plays_json["rush"] == True) & (self.plays_json.late_down == True)].groupby(by=["pos_team"], as_index=False, group_keys = False).agg(
+            late_down_rush = ('rush', sum),
+            EPA_late_down_rush = ('EPA', sum),
+            EPA_late_down_rush_per_play = ('EPA', mean),
+            EPA_success_late_down_rush = ('EPA_success', sum),
+            EPA_success_late_down_rush_rate = ('EPA_success', mean),
         )
 
         situation_box_standard = self.plays_json[self.plays_json.standard_down == True].groupby(by=["pos_team"], as_index=False, group_keys = False).agg(
