@@ -16,3 +16,5 @@ build
 dist
 *.ipynb
 *_box_score_*.csv
+.venv
+sportsdataverse.egg-info/PKG-INFO

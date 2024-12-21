@@ -504,6 +504,21 @@ def test_lsu_24wk1():
     assert bad_yards_play.loc[bad_yards_play.index[0], 'end.distance'] == 10
 
 
+def test_kickoff_tb():
+    test = CFBPlayProcess(gameId = 401677179)
+    test.espn_cfb_pbp()
+    json_dict_stuff = test.run_processing_pipeline()
+
+    plays = test.plays_json
+    tb_play = plays[
+        plays['text'].isin([
+            "Eric Goins kickoff for 40 yds fair catch by Ke'Shawn Williams at the IU 7",
+            # "USC Penalty, Unsportsmanlike Conduct (Anthony Lucas) to the 50 yard line",
+        ])
+    ]
+    assert tb_play.loc[tb_play.index[0], 'kickoff_tb'] == True
+    assert tb_play.loc[tb_play.index[0], 'end.yardsToEndzone'] == 75
+
 # def test_last_play_live_game():
 #     test = CFBPlayProcess(gameId = 401628334)
 #     test.espn_cfb_pbp()
