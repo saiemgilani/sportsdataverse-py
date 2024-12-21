@@ -1367,12 +1367,24 @@ class CFBPlayProcess(object):
                 & (play_df.kickoff_play == True),
                 (
                     play_df["text"].str.contains(
+                        "fair catch", case=False, flags=0, na=False, regex=True
+                    )
+                )
+                & (play_df.kickoff_play == True),
+                (
+                    play_df["text"].str.contains(
+                        "fair caught", case=False, flags=0, na=False, regex=True
+                    )
+                )
+                & (play_df.kickoff_play == True),
+                (
+                    play_df["text"].str.contains(
                         "kickoff$", case=False, flags=0, na=False, regex=True
                     )
                 )
                 & (play_df.kickoff_play == True),
             ],
-            [True, True],
+            [True, True, True, True],
             default=False,
         )
         play_df["kickoff_onside"] = (
