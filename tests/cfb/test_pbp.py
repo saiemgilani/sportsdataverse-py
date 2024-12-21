@@ -368,11 +368,16 @@ def test_available_yards():
     test = CFBPlayProcess(gameId = 401635525) # Ohio St/Mich: 401520434 vs BC/SMU: 401551750
     test.espn_cfb_pbp()
     json_dict_stuff = test.run_processing_pipeline()
-    box = test.create_box_score()
+    # box = test.create_box_score()
 
-    # plays = test.plays_json
-
-    LOGGER.info(box)
+    plays = test.plays_json
+    tb_play = plays[
+        plays['text'].isin([
+            "Riley Leonard run for 1 yd to the ND 21"
+        ])
+    ]
+    assert tb_play.loc[tb_play.index[0], 'drive_start'] == 65
+    # LOGGER.info(tb_play.loc[tb_play.index[1], 'drive_st
 
 
 def test_bugged_pass_yards():
@@ -513,7 +518,6 @@ def test_kickoff_tb():
     tb_play = plays[
         plays['text'].isin([
             "Eric Goins kickoff for 40 yds fair catch by Ke'Shawn Williams at the IU 7",
-            # "USC Penalty, Unsportsmanlike Conduct (Anthony Lucas) to the 50 yard line",
         ])
     ]
     assert tb_play.loc[tb_play.index[0], 'kickoff_tb'] == True
